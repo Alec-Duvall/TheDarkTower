@@ -1,10 +1,15 @@
 import cv2
 import numpy as np
+import serial
+import time
 
 # camera config
 CAM_INDEX = 0
 FRAME_W, FRAME_H = 640, 480
 AREA_MIN = 500  # ignore tiny blobs
+
+# USB communication config
+ser = serial.Serial('COM3', 115200, timeout=1) #change COM3 to whatever pico shows up as in device manager
 
 # HSV range use online picker to match object color as close as possible
 LOWER = np.array([40, 90, 70])    # green-ish low
@@ -70,6 +75,11 @@ while True:
             # should be easier to map to servo angles this way maybe?
             nx = (cx - FRAME_W/2) / (FRAME_W/2)
             ny = (cy - FRAME_H/2) / (FRAME_H/2)
+
+            # create packet and send to pico, packet is CSV style,
+            # could make json or some other structure if that helps
+            packet = f"{nx},{ny}\n"
+            ser.write(packet.encode('utf-8'))
 
             # crosshair at image center + text
             cv2.drawMarker(frame, (FRAME_W//2, FRAME_H//2), (255,255,255),
