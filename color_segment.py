@@ -10,6 +10,7 @@ AREA_MIN = 500  # ignore tiny blobs
 
 # USB communication config
 ser = serial.Serial('COM3', 115200, timeout=1) #change COM3 to whatever pico shows up as in device manager
+time.sleep(2) # give the pico time to reset
 
 # HSV range use online picker to match object color as close as possible
 LOWER = np.array([40, 90, 70])    # green-ish low
@@ -101,4 +102,5 @@ while True:
         break
 
 cap.release()
+ser.close()
 cv2.destroyAllWindows()
