@@ -124,7 +124,8 @@ while True:
 
             # create packet and send to pico, packet is CSV style,
             # could make json or some other structure if that helps
-            packet = f"{nx},{ny}\n"
+            # inverted nx and ny because camera mirrored
+            packet = f"{-nx},{-ny}\n"
             ser.write(packet.encode('utf-8'))
 
             # crosshair at image center + text
