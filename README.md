@@ -19,3 +19,5 @@ first two optional setup virtual environment to avoid conflict with other projec
 - I used thonny IDE to boot.py and then restart and run code.py
 - Edit line 14 in color_segment to connect to data COM (usually second COM in device manager)
 - then run color_segment.py in terminal and hopefully camera appears
+- to edit code.py after installing on pico only way ive found so far is to wipe the drive with
+  --> storage.erase_filesystem() in thonny REPL and then pasting the newly edited files
