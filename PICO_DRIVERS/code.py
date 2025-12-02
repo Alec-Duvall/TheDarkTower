@@ -7,6 +7,15 @@ import struct
 
 from Arducam import * 
 
+import pwmio
+from adafruit_motor import servo
+
+# Servo setup (example: GP0)
+pwm = pwmio.PWMOut(board.GP0, frequency=50)
+my_servo = servo.Servo(pwm, min_pulse=500, max_pulse=2500)
+
+
+
 ONCE = 512          # bytes per SPI burst
 RESOLUTION = 0x04   #640x480 in OV2640 example table
 
@@ -123,6 +132,9 @@ def read_line_from_usb():
             utime.sleep(0.001)
     return bytes(line)
 
+def nx_to_angle(nx):
+    nx = max(-1.0, min(1.0, nx))
+    return (nx + 1) * 90  # map [-1,1] to [0,180]
 
 def main():
     cam = init_camera()
@@ -130,6 +142,7 @@ def main():
 
     while True:
         cmd = read_line_from_usb()
+        # Frame request
         if cmd == b"CAP":
             try:
                 log("CAP command received")
@@ -138,7 +151,18 @@ def main():
                 log("Capture error: {}".format(e))
         else:
             log("Unknown command: {}".format(cmd))
-
+        
+        # Servo command
+        try:
+            parts = cmd.decode().split(',')
+            if len(parts) == 2:
+                nx = float(parts[0])
+                ny = float(parts[1]) #here just in case
+                angle = nx_to_angle(nx)
+                my_servo.angle = angle
+                log(f"servo angle: {angle:.1f}")
+        except Exception as e:
+            log(f"servo parse error: {e}")
 
 if __name__ == "__main__":
     main()
