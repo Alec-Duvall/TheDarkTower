@@ -1,4 +1,3 @@
-
 import time as utime
 import board
 import digitalio
@@ -11,8 +10,12 @@ import pwmio
 from adafruit_motor import servo
 
 # Servo setup (example: GP0)
-pwm = pwmio.PWMOut(board.GP0, frequency=50)
-my_servo = servo.Servo(pwm, min_pulse=500, max_pulse=2500)
+pwm_x = pwmio.PWMOut(board.GP0, frequency=50)
+my_servo_x = servo.Servo(pwm_x, min_pulse=500, max_pulse=2500)
+
+pwm_y = pwmio.PWMOut(board.GP1, frequency=50)
+my_servo_y = servo.Servo(pwm_y, min_pulse=500, max_pulse=2500)
+
 
 
 
@@ -25,6 +28,11 @@ buf = bytearray(ONCE)
 led = digitalio.DigitalInOut(board.LED)
 led.direction = digitalio.Direction.OUTPUT
 led.value = False
+
+# GP10 Laser Dot Diode
+laser = digitalio.DigitalInOut(board.GP10)
+laser.direction = digitalio.Direction.OUTPUT
+laser.value = False
 
 # Use the USB "data" serial port
 data_serial = usb_cdc.data
@@ -132,14 +140,27 @@ def read_line_from_usb():
             utime.sleep(0.001)
     return bytes(line)
 
-def nx_to_angle(nx):
+def nx_to_angle(nx, rotation_angle_x):
     nx = max(-1.0, min(1.0, nx))
-    return (nx + 1) * 90  # map [-1,1] to [0,180]
+    
+    rotation_angle_x += nx*10
+    rotation_angle_x = max(0, min(180, rotation_angle_x))
+    return rotation_angle_x
+
+def ny_to_angle(ny, rotation_angle_y):
+    ny = max(-1.0, min(1.0, ny))
+    
+    rotation_angle_y -= ny*10
+    rotation_angle_y = max(50, min(160, rotation_angle_y))
+    return rotation_angle_y
 
 def main():
+    count = 0
+    shoot = 0
     cam = init_camera()
     log("Waiting for commands on USB data port...")
-
+    rotation_angle_x = 90.0
+    rotation_angle_y = 90.0
     while True:
         cmd = read_line_from_usb()
         # Frame request
@@ -156,14 +177,39 @@ def main():
         try:
             parts = cmd.decode().split(',')
             if len(parts) == 2:
+                count = 0
                 nx = float(parts[0])
                 ny = float(parts[1]) #here just in case
-                angle = nx_to_angle(nx)
-                my_servo.angle = angle
-                log(f"servo angle: {angle:.1f}")
+                rotation_angle_x = nx_to_angle(nx, rotation_angle_x)
+                rotation_angle_y = ny_to_angle(ny, rotation_angle_y)
+                my_servo_x.angle = rotation_angle_x
+                my_servo_y.angle = rotation_angle_y
+                log(f"servo_x angle: {rotation_angle_x:.1f}")
+                log(f"servo_y angle: {rotation_angle_y:.1f}")
+                log(f"{nx}")
+                log(f"{ny}")
+                if(nx < 0.05 and ny < 0.05):
+                    shoot += 1
+                else:
+                    laser.value = False
+                    shoot = 0
+                if(shoot >= 3):
+                    laser.value = True
+            else:
+                log("No green detected.")
+                laser.value = False
+                count += 1
+                if (count >= 20): # reinitialize servo position if no objects found every 20 frames
+                    rotation_angle_x = 90
+                    rotation_angle_y = 90
+                    my_servo_x.angle = rotation_angle_x
+                    my_servo_y.angle = rotation_angle_y
+                    log(f"servo_x angle: {rotation_angle_x:.1f}")
+                    log(f"servo_y angle: {rotation_angle_y:.1f}")
+                    count = 0
+
         except Exception as e:
             log(f"servo parse error: {e}")
 
 if __name__ == "__main__":
     main()
-
